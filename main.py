@@ -1,12 +1,16 @@
 import requests
 import time
 import datetime
+from gpiozero import LED
 
 HTTP_OK = 200
-RED_LED_PIN = 17
-YELLOW_LED_PIN = 27
-GREEN_LED_PIN = 22
+RED_LED_PIN = "GPIO16" 
+YELLOW_LED_PIN = "GPIO20" 
+GREEN_LED_PIN = "GPIO21"
 
+red_led = LED(RED_LED_PIN)
+yellow_led = LED(YELLOW_LED_PIN)
+green_led = LED(GREEN_LED_PIN)
 
 def get_date_today():
     current_date = datetime.date.today()
@@ -81,18 +85,27 @@ def turn_on_the_led(value_tuple):
     hysteresis = 1
     if not value_tuple:
         print("grau")
+        red_led.on()
+        yellow_led.on()
+        green_led.on()
         return
     current_value, upper_limit, lower_limit = value_tuple
 
     if current_value > upper_limit + hysteresis:
         print("gruen")
+        green_led.on()
     elif  lower_limit + hysteresis <= current_value <= upper_limit - hysteresis:
         print("gelb")
+        yellow_led.on()
     elif current_value < lower_limit - hysteresis:
         print("rot")
+        red_led.on()
     else :
         print("Problem bei der Bestimmung des LED-Status.")
         print("grau")
+        red_led.on()
+        yellow_led.on()
+        green_led.on()
     
     
 
@@ -105,6 +118,9 @@ try:
 except Exception as e:
     print(f"Ein Fehler ist aufgetreten: {e}")
     print("grau")
+    red_led.on()
+    yellow_led.on()
+    green_led.on()
    
 finally:
     print("fertig")
