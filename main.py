@@ -1,28 +1,35 @@
+
+import RPi.GPIO as GPIO
 import requests
 import time
 import datetime
-from gpiozero import LED
-from signal import pause
 
+# GPIO-Pin-Nummern
+RED_LED_PIN = 16
+YELLOW_LED_PIN = 20
+GREEN_LED_PIN = 21
+#
+GPIO.setwarnings(False)
+GPIO.cleanup()
+# GPIO-Setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(RED_LED_PIN, GPIO.OUT)
+GPIO.setup(YELLOW_LED_PIN, GPIO.OUT)
+GPIO.setup(GREEN_LED_PIN, GPIO.OUT)
+
+# HTTP-Konstanten
 HTTP_OK = 200
-RED_LED_PIN = "GPIO16"
-YELLOW_LED_PIN = "GPIO20"
-GREEN_LED_PIN = "GPIO21"
-
-red_led = LED(RED_LED_PIN)
-yellow_led = LED(YELLOW_LED_PIN)
-green_led = LED(GREEN_LED_PIN)
 
 def get_date_today():
     current_date = datetime.date.today()
     year = current_date.year
-    month = f"{current_date.month:02d}"  
-    day = f"{current_date.day:02d}"      
+    month = f"{current_date.month:02d}"
+    day = f"{current_date.day:02d}"
     return (year, month, day)
 
 def get_energy_data():
     year, month, day = get_date_today()
-    print("Das heutige Datum: Jahr {}, Monat {}, Tag {}".format(year, month, day))
+    print(f"Das heutige Datum: Jahr {year}, Monat {month}, Tag {day}")
     url = f"https://www.energy-charts.info/charts/consumption_advice/data/de/day_{year}_{month}_{day}.json"
     retries = 5
     for attempt in range(retries):
@@ -54,69 +61,68 @@ def get_current_value(data):
     except ValueError:
         print("Aktuelle Zeit nicht in xAxisValues gefunden.")
         return None
-    
+
     renewable_share_of_load = find_and_print_data(data, "de", "Anteil EE an Last")
     renewable_share_of_load_forecast = find_and_print_data(data, "de", "Anteil EE an Last Prognose")
     durchschnitt_plus_10 = find_and_print_data(data, "de", "Durchschnitt + 10 %")
     durchschnitt_minus_10 = find_and_print_data(data, "de", "Durchschnitt - 10 %")
-    
-    if not durchschnitt_plus_10 or not durchschnitt_minus_10:
+    durchschnitt = find_and_print_data(data, "de", "Durchschnitt")
+
+    if not durchschnitt_plus_10 or not durchschnitt_minus_10 or not durchschnitt:
         print("Durchschnittsdaten nicht gefunden.")
         return None
-    
+
     if renewable_share_of_load and renewable_share_of_load[index] is not None:
         current_value = renewable_share_of_load[index]
-        print("Der aktuelle Wert ist {}".format(current_value))
-        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index])
-    elif renewable_share_of_load_forecast and renewable_share_of_load_forecast[index] is not None:  
+        print(f"Der aktuelle Wert ist {current_value}")
+        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index], durchschnitt[index])
+    elif renewable_share_of_load_forecast and renewable_share_of_load_forecast[index] is not None:
         current_value = renewable_share_of_load_forecast[index]
-        print("Der prognostizierte Wert ist {}".format(current_value))
-        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index])
+        print(f"Der prognostizierte Wert ist {current_value}")
+        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index], durchschnitt[index])
     else:
         print("Keine Daten für die aktuelle Zeit verfügbar.")
         return None
 
 def turn_on_the_led(value_tuple):
-    hysteresis = 1
+    # Schalte alle LEDs aus
+    GPIO.output(RED_LED_PIN, GPIO.LOW)
+    GPIO.output(YELLOW_LED_PIN, GPIO.LOW)
+    GPIO.output(GREEN_LED_PIN, GPIO.LOW)
+
     if not value_tuple:
-        print("LED Status: Grau")
-        red_led.on()
-        yellow_led.on()
-        green_led.on()
+        print("LED Status: Grau (alle an)")
+        GPIO.output(RED_LED_PIN, GPIO.HIGH)
+        GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
         return
-    current_value, upper_limit, lower_limit = value_tuple
 
-    red_led.off()
-    yellow_led.off()
-    green_led.off()
-
-    if current_value > upper_limit + hysteresis:
+    current_value, upper_limit, lower_limit, avreage = value_tuple
+    hysteresis = avreage * 0.01
+    if current_value >= upper_limit + hysteresis:
         print("LED Status: Grün")
-        green_led.on()
-    elif lower_limit + hysteresis <= current_value <= upper_limit - hysteresis:
+        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+    elif lower_limit - hysteresis < current_value < upper_limit + hysteresis:
         print("LED Status: Gelb")
-        yellow_led.on()
-    elif current_value < lower_limit - hysteresis:
+        GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+    elif current_value <= lower_limit - hysteresis
         print("LED Status: Rot")
-        red_led.on()
+        GPIO.output(RED_LED_PIN, GPIO.HIGH)
     else:
         print("Problem bei der Bestimmung des LED-Status.")
-        print("LED Status: Grau")
-        red_led.on()
-        yellow_led.on()
-        green_led.on()
+        print("LED Status: Grau (alle an)")
+        GPIO.output(RED_LED_PIN, GPIO.HIGH)
+        GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
 
 try:
+
     energy_data = get_energy_data()
     if energy_data:
         turn_on_the_led(get_current_value(energy_data))
 
-    # Halte das Programm am Laufen, damit die LED nicht ausgeht
-    pause()
+
 
 except Exception as e:
     print(f"Ein Fehler ist aufgetreten: {e}")
-    print("LED Status: Grau")
-    red_led.on()
-    yellow_led.on()
-    green_led.on()
+    GPIO.cleanup()
