@@ -101,8 +101,8 @@ def turn_on_the_led(value_tuple):
     current_value, upper_limit, lower_limit= value_tuple
     hysteresis = 1
     if previous_led_status == "Grün":
-        # Wechsel zu Gelb, wenn current_value <= upper_limit - hysteresis
-        if current_value <= upper_limit - hysteresis:      
+        # Wechsel zu Gelb, wenn current_value < upper_limit - hysteresis
+        if current_value < upper_limit - hysteresis:      
             print("LED Status: Gelb")
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
             previous_led_status = "Gelb"
@@ -111,11 +111,11 @@ def turn_on_the_led(value_tuple):
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
             previous_led_status = "Grün"
     elif previous_led_status == "Gelb" or previous_led_status is None:
-        if current_value >= upper_limit + hysteresis:
+        if current_value > upper_limit + hysteresis:
             print("LED Status: Grün")
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
             previous_led_status = "Grün"
-        elif current_value <= lower_limit - hysteresis:
+        elif current_value < lower_limit - hysteresis:
             print("LED Status: Rot")
             GPIO.output(RED_LED_PIN, GPIO.HIGH)
             previous_led_status = "Rot"
@@ -124,8 +124,8 @@ def turn_on_the_led(value_tuple):
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
             previous_led_status = "Gelb"
     elif previous_led_status == "Rot":
-        # Wechsel zu Gelb, wenn current_value >= lower_limit + hysteresis
-        if current_value >= lower_limit + hysteresis:
+        # Wechsel zu Gelb, wenn current_value > lower_limit + hysteresis
+        if current_value > lower_limit + hysteresis:
             print("LED Status: Gelb")
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
             previous_led_status = "Gelb"
