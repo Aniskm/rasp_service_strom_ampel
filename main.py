@@ -8,7 +8,7 @@ import datetime
 RED_LED_PIN = 16
 YELLOW_LED_PIN = 20
 GREEN_LED_PIN = 21
-#
+# clean
 GPIO.setwarnings(False)
 GPIO.cleanup()
 # GPIO-Setup
@@ -67,20 +67,19 @@ def get_current_value(data):
     renewable_share_of_load_forecast = find_and_print_data(data, "de", "Anteil EE an Last Prognose")
     durchschnitt_plus_10 = find_and_print_data(data, "de", "Durchschnitt + 10 %")
     durchschnitt_minus_10 = find_and_print_data(data, "de", "Durchschnitt - 10 %")
-    durchschnitt = find_and_print_data(data, "de", "Durchschnitt")
 
-    if not durchschnitt_plus_10 or not durchschnitt_minus_10 or not durchschnitt:
+    if not durchschnitt_plus_10 or not durchschnitt_minus_10:
         print("Durchschnittsdaten nicht gefunden.")
         return None
 
     if renewable_share_of_load and renewable_share_of_load[index] is not None:
         current_value = renewable_share_of_load[index]
         print(f"Der aktuelle Wert ist {current_value}")
-        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index], durchschnitt[index])
+        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index])
     elif renewable_share_of_load_forecast and renewable_share_of_load_forecast[index] is not None:
         current_value = renewable_share_of_load_forecast[index]
         print(f"Der prognostizierte Wert ist {current_value}")
-        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index], durchschnitt[index])
+        return (current_value, durchschnitt_plus_10[index], durchschnitt_minus_10[index])
     else:
         print("Keine Daten für die aktuelle Zeit verfügbar.")
         return None
@@ -93,14 +92,14 @@ def turn_on_the_led(value_tuple):
     GPIO.output(GREEN_LED_PIN, GPIO.LOW)
 
     if not value_tuple:
-        print("LED Status: Grau (alle an)")
+        print("LED Status: Grau (alle an) => Tuple problem")
         GPIO.output(RED_LED_PIN, GPIO.HIGH)
         GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
         GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
         return
 
-    current_value, upper_limit, lower_limit, avreage = value_tuple
-    hysteresis = avreage * 0.01
+    current_value, upper_limit, lower_limit= value_tuple
+    hysteresis = 1
     if previous_led_status == "Grün":
         # Wechsel zu Gelb, wenn current_value <= upper_limit - hysteresis
         if current_value <= upper_limit - hysteresis:      
