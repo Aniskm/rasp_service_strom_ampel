@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Energy Monitor Service every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+
