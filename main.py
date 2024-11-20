@@ -19,6 +19,7 @@ GPIO.setup(GREEN_LED_PIN, GPIO.OUT)
 
 # HTTP-Konstanten
 HTTP_OK = 200
+previous_led_status = None
 
 def get_date_today():
     current_date = datetime.date.today()
@@ -85,6 +86,7 @@ def get_current_value(data):
         return None
 
 def turn_on_the_led(value_tuple):
+    global previous_led_status
     # Schalte alle LEDs aus
     GPIO.output(RED_LED_PIN, GPIO.LOW)
     GPIO.output(YELLOW_LED_PIN, GPIO.LOW)
@@ -99,21 +101,47 @@ def turn_on_the_led(value_tuple):
 
     current_value, upper_limit, lower_limit, avreage = value_tuple
     hysteresis = avreage * 0.01
-    if current_value >= upper_limit + hysteresis:
-        print("LED Status: Grün")
-        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-    elif lower_limit - hysteresis < current_value < upper_limit + hysteresis:
-        print("LED Status: Gelb")
-        GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-    elif current_value <= lower_limit - hysteresis
-        print("LED Status: Rot")
-        GPIO.output(RED_LED_PIN, GPIO.HIGH)
+    if previous_led_status == "Grün":
+        # Wechsel zu Gelb, wenn current_value <= upper_limit - hysteresis
+        if current_value <= upper_limit - hysteresis:      
+            print("LED Status: Gelb")
+            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Gelb"
+        else:
+            print("LED Status: Grün")
+            GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Grün"
+    elif previous_led_status == "Gelb" or previous_led_status is None:
+        if current_value >= upper_limit + hysteresis:
+            print("LED Status: Grün")
+            GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Grün"
+        elif current_value <= lower_limit - hysteresis:
+            print("LED Status: Rot")
+            GPIO.output(RED_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Rot"
+        else:
+            print("LED Status: Gelb")
+            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Gelb"
+    elif previous_led_status == "Rot":
+        # Wechsel zu Gelb, wenn current_value >= lower_limit + hysteresis
+        if current_value >= lower_limit + hysteresis:
+            print("LED Status: Gelb")
+            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Gelb"
+        else:
+            print("LED Status: Rot")
+            GPIO.output(RED_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Rot"
     else:
+        #unerwartete Zustände
         print("Problem bei der Bestimmung des LED-Status.")
         print("LED Status: Grau (alle an)")
         GPIO.output(RED_LED_PIN, GPIO.HIGH)
         GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
         GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+        previous_led_status = None
 
 try:
 
