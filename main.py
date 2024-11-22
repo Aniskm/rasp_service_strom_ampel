@@ -110,8 +110,8 @@ def turn_on_the_led(value_tuple):
             print("LED Status: Grün")
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
             previous_led_status = "Grün"
-    elif previous_led_status == "Gelb" or previous_led_status is None:
-        if current_value > upper_limit + hysteresis:
+    elif previous_led_status == "Gelb":
+        if current_value >= upper_limit + hysteresis:
             print("LED Status: Grün")
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
             previous_led_status = "Grün"
@@ -133,6 +133,20 @@ def turn_on_the_led(value_tuple):
             print("LED Status: Rot")
             GPIO.output(RED_LED_PIN, GPIO.HIGH)
             previous_led_status = "Rot"
+    elif previous_led_status is None:
+        if current_value >= upper_limit + hysteresis:
+            print("LED Status: Grün")
+            GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Grün"
+        elif current_value < lower_limit - hysteresis:
+            print("LED Status: Rot")
+            GPIO.output(RED_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Rot"
+        elif current_value > lower_limit + hysteresis:
+            print("LED Status: Gelb")
+            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+            previous_led_status = "Gelb"
+         
     else:
         #unerwartete Zustände
         print("Problem bei der Bestimmung des LED-Status.")
