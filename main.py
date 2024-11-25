@@ -3,23 +3,16 @@ import RPi.GPIO as GPIO
 import requests
 import time
 import datetime
+import os
 
+STATUS_FILE = "./led_status.txt" 
 # GPIO-Pin-Nummern
 RED_LED_PIN = 16
 YELLOW_LED_PIN = 20
 GREEN_LED_PIN = 21
-# clean
-GPIO.setwarnings(False)
-GPIO.cleanup()
-# GPIO-Setup
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(RED_LED_PIN, GPIO.OUT)
-GPIO.setup(YELLOW_LED_PIN, GPIO.OUT)
-GPIO.setup(GREEN_LED_PIN, GPIO.OUT)
-
 # HTTP-Konstanten
 HTTP_OK = 200
-previous_led_status = None
+
 
 def get_date_today():
     current_date = datetime.date.today()
@@ -83,9 +76,23 @@ def get_current_value(data):
     else:
         print("Keine Daten für die aktuelle Zeit verfügbar.")
         return None
+    
+def read_previous_status():
+    if os.path.exists(STATUS_FILE):
+        with open(STATUS_FILE, 'r') as file:
+            status = file.read().strip()
+            print(f"Vorheriger LED-Status geladen: {status}")
+            return status
+    else:
+        print("Keine vorherige Statusdatei gefunden. Setze Status auf None.")
+        return None
 
-def turn_on_the_led(value_tuple):
-    global previous_led_status
+def write_current_status(status):
+    with open(STATUS_FILE, 'w') as file:
+        file.write(status)
+    print(f"Aktueller LED-Status gespeichert: {status}")
+
+def turn_on_the_led(value_tuple, previous_led_status):
     # Schalte alle LEDs aus
     GPIO.output(RED_LED_PIN, GPIO.LOW)
     GPIO.output(YELLOW_LED_PIN, GPIO.LOW)
@@ -96,74 +103,92 @@ def turn_on_the_led(value_tuple):
         GPIO.output(RED_LED_PIN, GPIO.HIGH)
         GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
         GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-        return
+        return None
 
     current_value, upper_limit, lower_limit= value_tuple
     hysteresis = 1
+    new_led_status = previous_led_status
+
     if previous_led_status == "Grün":
         # Wechsel zu Gelb, wenn current_value < upper_limit - hysteresis
         if current_value < upper_limit - hysteresis:      
-            print("LED Status: Gelb")
+            print("LED Status wechselt zu: Gelb")
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Gelb"
+            new_led_status = "Gelb"
         else:
-            print("LED Status: Grün")
+            print("LED Status bleibt: Grün")
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Grün"
     elif previous_led_status == "Gelb":
         if current_value >= upper_limit + hysteresis:
-            print("LED Status: Grün")
+            print("LED Status wechselt zu: Grün")
             GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Grün"
+            new_led_status = "Grün"
         elif current_value < lower_limit - hysteresis:
-            print("LED Status: Rot")
+            print("LED Status wechselt zu: Rot")
             GPIO.output(RED_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Rot"
+            new_led_status = "Rot"
         else:
-            print("LED Status: Gelb")
+            print("LED Status bleibt: Gelb")
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Gelb"
     elif previous_led_status == "Rot":
         # Wechsel zu Gelb, wenn current_value > lower_limit + hysteresis
         if current_value > lower_limit + hysteresis:
-            print("LED Status: Gelb")
+            print("LED Status wechselt zu: Gelb")
             GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Gelb"
+            new_led_status = "Gelb"
         else:
-            print("LED Status: Rot")
+            print("LED Status bleibt: Rot")
             GPIO.output(RED_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Rot"
-    elif previous_led_status is None:
-        if current_value >= upper_limit + hysteresis:
-            print("LED Status: Grün")
-            GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Grün"
-        elif current_value < lower_limit - hysteresis:
-            print("LED Status: Rot")
-            GPIO.output(RED_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Rot"
-        elif current_value > lower_limit + hysteresis:
-            print("LED Status: Gelb")
-            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-            previous_led_status = "Gelb"
-         
     else:
-        #unerwartete Zustände
-        print("Problem bei der Bestimmung des LED-Status.")
-        print("LED Status: Grau (alle an)")
-        GPIO.output(RED_LED_PIN, GPIO.HIGH)
-        GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
-        GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
-        previous_led_status = None
+        # Initialer Status 
+        if current_value >= upper_limit + hysteresis:
+            print("LED Status initialisiert zu: Grün")
+            GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
+            new_led_status = "Grün"
+        elif current_value < lower_limit - hysteresis:
+            print("LED Status initialisiert zu: Rot")
+            GPIO.output(RED_LED_PIN, GPIO.HIGH)
+            new_led_status = "Rot"
+        else:
+            print("LED Status initialisiert zu: Gelb")
+            GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+            new_led_status = "Gelb"
+    return new_led_status
+         
+def turn_on_all_led():
+    GPIO.output(RED_LED_PIN, GPIO.HIGH)
+    GPIO.output(YELLOW_LED_PIN, GPIO.HIGH)
+    GPIO.output(GREEN_LED_PIN, GPIO.HIGH)
 
-try:
+def main():
+    try:
+        # GPIO-Setup
+        GPIO.setwarnings(False)
+        GPIO.cleanup()
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(RED_LED_PIN, GPIO.OUT)
+        GPIO.setup(YELLOW_LED_PIN, GPIO.OUT)
+        GPIO.setup(GREEN_LED_PIN, GPIO.OUT)
 
-    energy_data = get_energy_data()
-    if energy_data:
-        turn_on_the_led(get_current_value(energy_data))
+        previous_led_status = read_previous_status()
+        energy_data = get_energy_data()
+        if energy_data:
+            current_value_tuple = get_current_value(energy_data)
+            new_led_status = turn_on_the_led(current_value_tuple, previous_led_status)
+            if new_led_status:
+                write_current_status(new_led_status)
+            else:
+                print("Kein neuer LED-Status zum Speichern.")
+        else:
+            print("LED Status: Grau (alle an) =>Keine Energiedaten verfügbar.")
+            turn_on_all_led()
 
+    except Exception as e:
+        print(f"LED Status: Grau (alle an) => Ein Fehler ist aufgetreten: {e}")
+        turn_on_all_led()
 
+    finally:
+        GPIO.cleanup()
 
-except Exception as e:
-    print(f"Ein Fehler ist aufgetreten: {e}")
-    GPIO.cleanup()
+if __name__ == "__main__":
+    main()
