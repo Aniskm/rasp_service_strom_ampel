@@ -187,8 +187,5 @@ def main():
         print(f"LED Status: Grau (alle an) => Ein Fehler ist aufgetreten: {e}")
         turn_on_all_led()
 
-    finally:
-        GPIO.cleanup()
-
 if __name__ == "__main__":
     main()
